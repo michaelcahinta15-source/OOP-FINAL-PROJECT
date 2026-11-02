@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101a30" />
+    <title>Courtside — Tournament Manager</title>
+    <link rel="stylesheet" href="./css/styles.css?v=2" />
+    <script type="module" src="./js/app.js?v=4"></script>
+  </head>
+  <body>
+    <section id="auth-root" class="auth-root" aria-live="polite">
+      <noscript>This tournament manager requires JavaScript to run.</noscript>
+    </section>
+    <div class="app-shell" hidden>
+      <aside class="sidebar" aria-label="Main navigation">
+        <a class="brand" href="#dashboard" aria-label="Courtside dashboard">
+          <span class="brand-mark" aria-hidden="true">C</span>
+          <span>
+            <strong>COURTSIDE</strong>
+            <small>TOURNAMENT MANAGER</small>
+          </span>
+        </a>
+
+        <p class="nav-label">WORKSPACE</p>
+        <nav class="primary-nav">
+          <a class="nav-link" href="#dashboard" data-view="dashboard">
+            <span class="nav-icon" aria-hidden="true">▦</span> Dashboard
+          </a>
+          <a class="nav-link" href="#teams" data-view="teams">
+            <span class="nav-icon" aria-hidden="true">♟</span> Teams
+          </a>
+          <a class="nav-link" href="#schedule" data-view="schedule">
+            <span class="nav-icon" aria-hidden="true">▤</span> Schedule
+          </a>
+          <a class="nav-link" href="#standings" data-view="standings">
+            <span class="nav-icon" aria-hidden="true">↗</span> Standings
+          </a>
+          <a class="nav-link" href="#bracket" data-view="bracket">
+            <span class="nav-icon" aria-hidden="true">⌘</span> Bracket
+          </a>
+          <a class="nav-link" href="#admin" data-view="admin" hidden>
+            <span class="nav-icon" aria-hidden="true">⚑</span> Admin
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <a class="nav-link" href="#settings" data-view="settings">
+            <span class="nav-icon" aria-hidden="true">⚙</span> Settings
+          </a>
+          <div class="season-card">
+            <span class="season-dot" aria-hidden="true"></span>
+            <span><strong>Demo season</strong><small>Ready to set up</small></span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="breadcrumb"><span>Tournament</span><span aria-hidden="true">/</span><strong id="current-section">Dashboard</strong></div>
+          <div class="topbar-actions">
+            <span class="account-chip"><span class="avatar" id="account-avatar" aria-hidden="true">?</span><span class="account-details"><strong id="account-name">Account</strong><small id="account-role">VIEWER</small></span></span>
+            <button id="sign-out" class="button button-quiet" type="button">Sign out</button>
+          </div>
+        </header>
+
+        <section id="view-root" class="view-root" aria-live="polite">
+          <noscript>This tournament manager requires JavaScript to run.</noscript>
+        </section>
+      </main>
+    </div>
+    <div id="toast-region" class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

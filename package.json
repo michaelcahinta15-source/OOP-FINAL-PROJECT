@@ -1,0 +1,8 @@
+{
+  "name": "courtside-tournament-manager",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.mjs"
+  }
+}
