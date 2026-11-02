@@ -19,9 +19,6 @@ const host = process.env.HOST ?? "127.0.0.1";
 const sessionLifetime = 12 * 60 * 60 * 1000;
 const sessions = new Map();
 const loginFailures = new Map();
-if (process.env.VERCEL && (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
-  throw new Error("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Vercel to persist accounts and sessions.");
-}
 const allowedTiebreakers = new Set(["HEAD_TO_HEAD", "POINT_DIFFERENTIAL", "POINTS_FOR", "WIN_PERCENTAGE"]);
 const initialState = () => ({
   tournament: {
@@ -98,10 +95,9 @@ class JsonFileStore {
 }
 
 const store = new JsonFileStore();
-const accounts = new AccountRepository(store, {
-  url: process.env.SUPABASE_URL,
-  key: process.env.SUPABASE_SERVICE_ROLE_KEY,
-});
+let accounts;
+let initialization;
+let initialized = false;
 
 function cleanUser(user) {
   return { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt };
@@ -153,6 +149,22 @@ async function bootstrapAdmin() {
     return;
   }
   console.log(`Created the initial administrator account for ${credentials.email}.`);
+}
+
+function initialize() {
+  initialization ??= (async () => {
+    if (process.env.VERCEL && (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
+      throw new Error("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Vercel.");
+    }
+    accounts = new AccountRepository(store, {
+      url: process.env.SUPABASE_URL,
+      key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    });
+    await store.load();
+    await bootstrapAdmin();
+    initialized = true;
+  })();
+  return initialization;
 }
 
 function parseCookies(request) {
@@ -553,6 +565,7 @@ export async function handleRequest(request, response) {
   response.setHeader("Referrer-Policy", "same-origin");
   response.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
   try {
+    await initialize();
     const url = new URL(request.url, `http://${request.headers.host}`);
     if (url.pathname.startsWith("/api/")) await handleApi(request, response, url);
     else if (request.method === "GET") await serveStatic(request, response, url);
@@ -560,14 +573,16 @@ export async function handleRequest(request, response) {
   } catch (error) {
     const status = error instanceof HttpError ? error.status : 500;
     if (status === 500) console.error(error);
-    if (!response.headersSent) sendJson(response, status, { error: status === 500 ? "The server could not complete this request." : error.message });
+    const message = initialized
+      ? status === 500 ? "The server could not complete this request." : error.message
+      : "Server setup failed. Check the Vercel function logs, required environment variables, and Supabase schema.";
+    if (!response.headersSent) sendJson(response, initialized ? status : 503, { error: message });
     else response.destroy();
   }
 }
 
-await store.load();
-await bootstrapAdmin();
 if (!process.env.VERCEL) {
+  await initialize();
   const server = createServer(handleRequest);
   server.listen(port, host, () => {
     console.log(`Courtside is running at http://${host}:${port}`);

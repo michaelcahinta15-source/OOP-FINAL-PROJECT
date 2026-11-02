@@ -34,9 +34,11 @@ Vercel's function filesystem is temporary, so the local JSON account file is not
 1. Create a Supabase project and run [`database/schema.sql`](./database/schema.sql) in its SQL Editor.
 2. In Vercel Project Settings → Environment Variables, set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from the Supabase project. Keep the service-role key secret; it is only read by the server function and must never be added to frontend code.
 3. Also set `ADMIN_EMAIL` and a private `ADMIN_PASSWORD` of at least 12 characters. The first function startup creates the administrator in Supabase if no admin exists.
-4. Deploy the project. Vercel serves the static frontend and routes `/api/*` to [`api/[...path].mjs`](./api/[...path].mjs). Registration stores each viewer's account and password hash in `courtside_accounts`; sessions are stored in `courtside_sessions` and survive function restarts.
+4. Deploy the project. Vercel serves the static frontend and uses explicit Node.js function routes under [`api/`](./api), including a dedicated `/api/auth/me` route. The route files delegate to the shared handler in [`server/server.mjs`](./server/server.mjs). Registration stores each viewer's account and password hash in `courtside_accounts`; sessions are stored in `courtside_sessions` and survive function restarts.
 
 The Supabase account and session tables use row-level security without public policies; the backend accesses them with the server-only service-role key. Local accounts in `server/data/courtside.json` are not automatically copied to Supabase. Tournament state still uses the local JSON store (under `/tmp` on Vercel), so tournament edits are **not durable on Vercel** yet; use a hosted database-backed tournament store before relying on deployed tournament data.
+
+To check the deployment, open `https://<your-project>.vercel.app/api/auth/me`. A working API returns JSON like `{"user":null}` when signed out. A JSON `503` means to check the Vercel function logs, environment variables, and Supabase schema; a Vercel HTML/text `404` usually means the new API route files have not been deployed or the Vercel project root directory is wrong.
 
 The server binds to `127.0.0.1` by default. This setup is intended for local demos. Do not expose it to the public internet as-is; a shared deployment needs HTTPS, secure cookie configuration, and an appropriately hardened host.
 
