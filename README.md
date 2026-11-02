@@ -38,6 +38,14 @@ The Supabase account and session tables use row-level security without public po
 
 The server binds to `127.0.0.1` by default. This setup is intended for local demos. Do not expose it to the public internet as-is; a shared deployment needs HTTPS, secure cookie configuration, and an appropriately hardened host.
 
+## Security notes
+
+- User-controlled team and tournament names are HTML-escaped before rendering. The dashboard follows this rule for both the current leader and leaderboard.
+- The Vercel deployment applies a restrictive Content Security Policy and standard browser security headers to static pages as well as API responses. Keep escaping in place; CSP is defense in depth, not a replacement.
+- The application has no LLM integration or prompt-processing endpoint. Its Supabase access uses the PostgREST API with encoded filter values; it does not build SQL from user input.
+- Do not commit `.env` or expose `SUPABASE_SERVICE_ROLE_KEY` in browser code. Use Vercel's encrypted environment variables for deployment secrets.
+- No web application can guarantee that it is impossible to exploit. Keep dependencies/platforms updated and review security again before using real accounts or sensitive data.
+
 ## Accounts and access
 
 - The environment-configured initial account is an **Administrator**. It can manage teams, schedules, games, tournament settings, demo data, and account roles.
