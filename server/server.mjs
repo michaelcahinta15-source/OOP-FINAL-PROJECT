@@ -266,7 +266,7 @@ function sendJson(response, status, value, headers = {}) {
 }
 
 function sessionCookie(token, request) {
-  const secure = request.socket.encrypted || request.headers["x-forwarded-proto"] === "https";
+  const secure = request.socket?.encrypted || request.headers["x-forwarded-proto"] === "https";
   return `courtside_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${sessionLifetime / 1000}${secure ? "; Secure" : ""}`;
 }
 
@@ -368,7 +368,9 @@ function validateState(input) {
 }
 
 function rateLimitKey(request, email) {
-  return `${request.socket.remoteAddress ?? "unknown"}:${email}`;
+  const forwardedAddress = request.headers["x-forwarded-for"]?.split(",")[0]?.trim();
+  const address = request.socket?.remoteAddress ?? forwardedAddress ?? request.headers["x-real-ip"] ?? "unknown";
+  return `${address}:${email}`;
 }
 
 function recordLoginFailure(key) {
@@ -441,7 +443,7 @@ async function handleApi(request, response, url) {
       if (accounts.usesHostedStorage) await accounts.deleteSession(hashSessionToken(token));
       else sessions.delete(token);
     }
-    const secure = request.socket.encrypted || request.headers["x-forwarded-proto"] === "https";
+    const secure = request.socket?.encrypted || request.headers["x-forwarded-proto"] === "https";
     sendJson(response, 200, { ok: true }, { "Set-Cookie": `courtside_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secure ? "; Secure" : ""}` });
     return;
   }
