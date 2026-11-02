@@ -6,7 +6,20 @@ export class StorageService {
       headers: body === undefined ? {} : { "Content-Type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-    const result = await response.json();
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.includes("application/json") && !contentType.includes("+json")) {
+      throw new Error(
+        `The server returned a web page instead of API data (HTTP ${response.status}). `
+        + "For local use, run `npm start` and open http://localhost:3000, not Live Server. "
+        + "On Vercel, check the API function deployment and environment variables.",
+      );
+    }
+    let result;
+    try {
+      result = await response.json();
+    } catch {
+      throw new Error("The server returned invalid API data. Check the backend logs and try again.");
+    }
     if (!response.ok) {
       const error = new Error(result.error ?? `Request failed (${response.status}).`);
       error.status = response.status;

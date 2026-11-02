@@ -25,6 +25,8 @@ node server/server.mjs
 
 Open the address configured by `PORT` (default <http://localhost:3000>). Choose **Settings → Load sample tournament** to populate demo data. The initial admin is created only when the server has no administrator; subsequent accounts and password hashes are stored under the ignored `server/data/` directory. Back up or delete that directory to preserve or reset server accounts and tournament data.
 
+If the sign-in page says the server returned a web page instead of API data, make sure the Node backend is running with `npm start`, open the same host and port it prints (normally <http://localhost:3000>), and don't use VS Code Live Server on port 5500/8765. Live Server only serves files and does not provide the `/api/*` backend.
+
 ## Deploy to Vercel with persistent accounts
 
 Vercel's function filesystem is temporary, so the local JSON account file is not persistent there. This project uses Supabase Postgres for account and login-session persistence on Vercel; no npm database package is required.
