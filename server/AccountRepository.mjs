@@ -1,7 +1,8 @@
 export class AccountRepositoryError extends Error {
-  constructor(status, message) {
+  constructor(status, message, code) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -107,15 +108,24 @@ export class AccountRepository {
   }
 
   async #request(endpoint, options = {}) {
-    const response = await fetch(`${this.#url}/rest/v1/${endpoint}`, {
-      ...options,
-      headers: {
-        apikey: this.#key,
-        Authorization: `Bearer ${this.#key}`,
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    });
+    let response;
+    try {
+      response = await fetch(`${this.#url}/rest/v1/${endpoint}`, {
+        ...options,
+        headers: {
+          apikey: this.#key,
+          Authorization: `Bearer ${this.#key}`,
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+      });
+    } catch (error) {
+      throw new AccountRepositoryError(
+        503,
+        "Could not reach Supabase. Check SUPABASE_URL and Supabase project availability.",
+        "SUPABASE_UNREACHABLE",
+      );
+    }
     const contents = await response.text();
     let result;
     try {
@@ -125,9 +135,27 @@ export class AccountRepository {
     }
     if (!response.ok) {
       if (response.status === 409 || result.code === "23505") {
-        throw new AccountRepositoryError(409, "Account already exists.");
+        throw new AccountRepositoryError(409, "Account already exists.", "ACCOUNT_EXISTS");
       }
-      throw new Error(`Hosted account storage request failed (${response.status}): ${result.message ?? response.statusText}`);
+      if (response.status === 401 || response.status === 403) {
+        throw new AccountRepositoryError(
+          503,
+          "Supabase rejected the server key. In Vercel, set SUPABASE_SERVICE_ROLE_KEY to the Supabase Secret key (sb_secret_...) for this project, not the Publishable key.",
+          "SUPABASE_KEY_REJECTED",
+        );
+      }
+      if (response.status === 404 || ["42P01", "PGRST205"].includes(result.code)) {
+        throw new AccountRepositoryError(
+          503,
+          "Supabase account tables were not found. Run database/schema.sql in the Supabase SQL Editor and make sure the Data API exposes the public schema.",
+          "SUPABASE_SCHEMA_MISSING",
+        );
+      }
+      throw new AccountRepositoryError(
+        503,
+        `Supabase request failed (${response.status}). Check the Supabase function/database logs and project configuration.`,
+        "SUPABASE_REQUEST_FAILED",
+      );
     }
     return result;
   }

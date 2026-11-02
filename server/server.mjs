@@ -19,6 +19,7 @@ const host = process.env.HOST ?? "127.0.0.1";
 const sessionLifetime = 12 * 60 * 60 * 1000;
 const sessions = new Map();
 const loginFailures = new Map();
+const supabaseServerKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const allowedTiebreakers = new Set(["HEAD_TO_HEAD", "POINT_DIFFERENTIAL", "POINTS_FOR", "WIN_PERCENTAGE"]);
 const initialState = () => ({
   tournament: {
@@ -153,12 +154,18 @@ async function bootstrapAdmin() {
 
 function initialize() {
   initialization ??= (async () => {
-    if (process.env.VERCEL && (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
-      throw new Error("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Vercel.");
+    if (process.env.VERCEL && (!process.env.SUPABASE_URL || !supabaseServerKey)) {
+      const missing = [
+        !process.env.SUPABASE_URL && "SUPABASE_URL",
+        !supabaseServerKey && "SUPABASE_SECRET_KEY",
+      ].filter(Boolean);
+      const error = new Error(`Add these Vercel Environment Variables: ${missing.join(" and ")}.`);
+      error.code = "MISSING_SUPABASE_CONFIG";
+      throw error;
     }
     accounts = new AccountRepository(store, {
       url: process.env.SUPABASE_URL,
-      key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      key: supabaseServerKey,
     });
     await store.load();
     await bootstrapAdmin();
@@ -573,10 +580,13 @@ export async function handleRequest(request, response) {
   } catch (error) {
     const status = error instanceof HttpError ? error.status : 500;
     if (status === 500) console.error(error);
-    const message = initialized
-      ? status === 500 ? "The server could not complete this request." : error.message
-      : "Server setup failed. Check the Vercel function logs, required environment variables, and Supabase schema.";
-    if (!response.headersSent) sendJson(response, initialized ? status : 503, { error: message });
+    const message = initialized || error instanceof AccountRepositoryError || error.code === "MISSING_SUPABASE_CONFIG"
+      ? error.message
+      : error.message === "No administrator exists. Set ADMIN_EMAIL and a private ADMIN_PASSWORD in .env or the environment, then start the server again."
+        ? "Add ADMIN_EMAIL and a private ADMIN_PASSWORD (at least 12 characters) to Vercel Environment Variables."
+        : "Server setup failed. Check the Vercel function logs and Supabase configuration.";
+    const code = error.code ?? (error instanceof AccountRepositoryError ? "SUPABASE_REQUEST_FAILED" : "SERVER_SETUP_FAILED");
+    if (!response.headersSent) sendJson(response, initialized ? status : 503, { error: message, code });
     else response.destroy();
   }
 }

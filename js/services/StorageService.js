@@ -21,8 +21,11 @@ export class StorageService {
       throw new Error("The server returned invalid API data. Check the backend logs and try again.");
     }
     if (!response.ok) {
-      const error = new Error(result.error ?? `Request failed (${response.status}).`);
+      const error = new Error(
+        result.hint ? `${result.error ?? `Request failed (${response.status}).`} ${result.hint}` : result.error ?? `Request failed (${response.status}).`,
+      );
       error.status = response.status;
+      error.code = result.code;
       throw error;
     }
     return result;
